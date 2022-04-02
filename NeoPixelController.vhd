@@ -21,9 +21,10 @@ entity NeoPixelController is
 	port(
 		clk_10M   : in   std_logic;
 		resetn    : in   std_logic;																		-- Active low signal
-		io_write  : in   std_logic ;
-		cs_addr   : in   std_logic ;
-		cs_data   : in   std_logic ;
+		io_write  : in   std_logic;
+		cs_addr   : in   std_logic;
+		cs_data   : in   std_logic;
+		cs_mode   : in   std_logic;
 		data_in   : in   std_logic_vector(15 downto 0);
 		sda       : out  std_logic
 	); 
@@ -47,6 +48,12 @@ architecture internals of NeoPixelController is
 	-- ====================================
 	type write_states is (idle, storing);																-- 
 	signal wstate: write_states;																			--
+	
+	-- Mode signals:
+	-- =============
+	type mode_states is (ind16, allpx, holdpx);														--
+	signal mode: mode_states;																				--
+	
 	-- ==============================================================================
 	--									Pixel Data Storage in RAM 
 	--								============================
@@ -229,13 +236,26 @@ begin
 			
 		elsif rising_edge(clk_10M) then
 			if (io_write = '1') and (cs_addr='1') then											-- If SCOMP is writing to the address register...
-				ram_write_addr <= data_in(7 downto 0);												-- ram_write_addr: takes in data from SCOMP ????? (data has 8-bit resolution) ~ (8 Least Signficant Bits)
+				ram_write_addr <= data_in(7 downto 0);													-- ram_write_addr: takes in data from SCOMP ????? (data has 8-bit resolution) ~ (8 Least Signficant Bits)
+			elsif (io_write = '1') and (cs_mode='1') then										-- Else if SCOMP is writing to the mode...
+				case data_in(3 downto 0) is																-- reads input (accepted range 0-15)
+				when "0000" =>																					-- mode 0 is ind16
+					mode <= ind16;
+				when "0001" =>																					-- mode 1 is allpx
+					mode <= allpx;
+				when "0010" =>																					-- mode 2 is holdpx
+					mode <= holdpx;
+				when others =>																					-- (default mode is ind16)
+					mode <= ind16;
+				end case;
 			end if;
 		end if;
 	
 		-- +------------------------------------------------------+
 		-- |	State Machine Protocol for Storing Data into Memory |
 		-- +------------------------------------------------------+
+		-- **CURRENTLY ONLY APPLIES TO ind16 MODE
+		
 		-- The sequnce of events needed to store data into memory will be implemented with a state machine.
 		
 		-- Although there are ways to more simply connect SCOMP's I/O system to an altsyncram module, 
@@ -257,33 +277,46 @@ begin
 		-- (3) others ~ 
 		if resetn = '0' then
 			wstate <= idle;
+			mode <= ind16;
 			ram_we <= '0';
 			ram_write_buffer <= x"000000";
 			-- Note that resetting this device does NOT clear the memory.
 			-- Clearing memory would require cycling through each address
 			-- and setting them all to 0.
 		elsif rising_edge(clk_10M) then
-			case wstate is
-				when idle =>
-					if (io_write = '1')  and (cs_data='1') then									-- [If SCOMP is writing to the address register...]
-						-- latch the current data into the temporary storage register,
-						-- because this is the only time it'll be available.
-						-- Convert RGB565 to 24-bit color
-						ram_write_buffer <= data_in(10 downto 5) & "00" & data_in(15 downto 11) & "000" & data_in(4 downto 0) & "000";
-						-- can raise ram_we on the upcoming transition, because data
-						-- won't be stored until next clock cycle.
-						ram_we <= '1';
-						-- Change state
-						wstate <= storing;
-					end if;
-				when storing =>
-					-- All that's needed here is to lower ram_we.  The RAM will be
-					-- storing data on this clock edge, so ram_we can go low at the
-					-- same time.
-					ram_we <= '0';
-					wstate <= idle;
-				when others =>
-					wstate <= idle;
+			case mode is
+			when ind16 =>
+				case wstate is
+					when idle =>
+						if (io_write = '1')  and (cs_data='1') then									-- [If SCOMP is writing to the address register...]
+							-- latch the current data into the temporary storage register,
+							-- because this is the only time it'll be available.
+							-- Convert RGB565 to 24-bit color
+							ram_write_buffer <= data_in(10 downto 5) & "00" & data_in(15 downto 11) & "000" & data_in(4 downto 0) & "000";
+							-- can raise ram_we on the upcoming transition, because data
+							-- won't be stored until next clock cycle.
+							ram_we <= '1';
+							-- Change state
+							wstate <= storing;
+						end if;
+					when storing =>
+						-- All that's needed here is to lower ram_we.  The RAM will be
+						-- storing data on this clock edge, so ram_we can go low at the
+						-- same time.
+						ram_we <= '0';
+						wstate <= idle;
+					when others =>
+						wstate <= idle;
+				end case;
+			
+			when allpx =>
+				-- implementation to set all pixels to the same color
+				
+			when holdpx =>
+				-- implementation to hold pixel data until a command is given to change them all at once
+				
+			when others =>
+				mode <= ind16;
 			end case;
 		end if;
 	end process;
