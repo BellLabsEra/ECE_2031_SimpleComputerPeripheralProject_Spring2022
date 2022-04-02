@@ -37,8 +37,8 @@ end entity;
 architecture internals of NeoPixelController is
 	-- Architecture Declaration Section:
 	-- ================================
-	signal ram_read_addr, ram_write_addr : std_logic_vector(7 downto 0);						-- Signals for the RAM read (ram_read_addr) and write addresses (ram_write_addr)
-	signal ram_we : std_logic;																				-- ram_we:					RAM write enable ~ 
+	signal ram_read_addr, ram_write_addr : std_logic_vector(7 downto 0);							-- Signals for the RAM read (ram_read_addr) and write addresses (ram_write_addr)
+	signal ram_we : std_logic;																		-- ram_we:					RAM write enable ~ 
 	signal ram_read_data : std_logic_vector(23 downto 0);											-- ram_read_data:			Signals for data coming out of memory
 	signal pixel_buffer : std_logic_vector(23 downto 0);											-- pixel_buffer:			Signal to store the current output pixel's color data
 	signal ram_write_buffer : std_logic_vector(23 downto 0);										-- ram_write_buffer:		Signal SCOMP will write to before it gets stored into memory
@@ -64,7 +64,7 @@ architecture internals of NeoPixelController is
 begin
 
 
-	pixelRAM : altsyncram
+	pixelRAM : altsyncram										-- Create pixelRAM the memory using altsyncram
 	GENERIC MAP (
 		address_reg_b => "CLOCK0",
 		clock_enable_input_a => "BYPASS",
@@ -110,21 +110,20 @@ begin
 	-- This process implements the NeoPixel protocol by using several counters to keep track of clock cycles,
 	-- which pixel is being written to, and which bit within that data is being written.
 	-- 
-	-- ==============================================================================
+	-- =======================================================================================
 
 	process (clk_10M, resetn)
 		-- protocol timing values (in 100s of ns)
 		constant t1h : integer := 8; 						-- high time for '1'  | 800ns
 		constant t0h : integer := 3; 						-- high time for '0'  | 300ns
-		constant ttot : integer := 12; 					-- total bit time     | 1200ns
+		constant ttot : integer := 12; 						-- total bit time     | 1200ns
 		
 		constant npix : integer := 4;
 
-		variable bit_count   : integer range 0 to 31; 		-- bit_count:		which bit in the 24 bits is being sent
-		variable enc_count   : integer range 0 to 31;		-- enc_count():	counter to count through the bit encoding
-		variable reset_count : integer range 0 to 1000;		-- reset_count:	counter for the reset pulse
+		variable bit_count   : integer range 0 to 31; 			-- bit_count:		which bit in the 24 bits is being sent
+		variable enc_count   : integer range 0 to 31;			-- enc_count():	counter to count through the bit encoding
+		variable reset_count : integer range 0 to 1000;			-- reset_count:	counter for the reset pulse
 		variable pixel_count : integer range 0 to 3;			-- pixel_count:	Counter for the current pixel
-		
 		
 	begin
 		-- +-----------------------+
@@ -138,7 +137,7 @@ begin
 			-- set sda inactive
 			sda <= '0';
 		-- +-----------------------+
-		-- |	RESET Disabled Mode	|
+		-- | RESET Disabled Mode   |
 		-- +-----------------------+
 		-- resetn = '1'
 		elsif (rising_edge(clk_10M)) then
@@ -187,20 +186,23 @@ begin
 				end if;
 			end if;																											
 			-- ======================================================= 										===========================================
-			
+			-- +------------------------------------+
+			-- |	Controls the RAM read address 	|
+			-- +------------------------------------+
+			-- 
 			-- This IF block controls the RAM read address to step through pixels
 			if reset_count /= 0 then
 				ram_read_addr <= x"00";
 			elsif (bit_count = 1) AND (enc_count = 0) then
-				-- increment the RAM address as each pixel ends
-				ram_read_addr <= ram_read_addr + 1;
+				ram_read_addr <= ram_read_addr + 1;									-- increment the RAM address as each pixel ends
 			end if;
 			
-			
+			-- +--------------------------------+
+			-- |	Contorls SDA (Serial Data)	|
+			-- +--------------------------------+
 			-- This IF block controls sda
 			if reset_count > 0 then
-				-- sda is 0 during reset/latch
-				sda <= '0';
+				sda <= '0';															-- sda is 0 during reset/latch
 			elsif 
 				-- sda is 1 in the first part of a bit.
 				-- Length of first part depends on if bit is 1 or 0
