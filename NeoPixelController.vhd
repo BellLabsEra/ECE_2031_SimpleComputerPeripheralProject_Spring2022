@@ -131,19 +131,21 @@ begin
 		-- +-----------------------+
 		if resetn = '0' then
 			-- reset all counters
-			bit_count := 23;
-			enc_count := 0;
-			reset_count := 1000;
-			-- set sda inactive
-			sda <= '0';
+			bit_count := 23;						-- 
+			enc_count := 0;							--
+			reset_count := 1000;					-- 
+			sda <= '0';								-- set sda inactive
 		-- +-----------------------+
-		-- | RESET Disabled Mode   |
+		-- | RESET Disabled Mode   |		~ resetn = '1'
 		-- +-----------------------+
-		-- resetn = '1'
+		-- 
 		elsif (rising_edge(clk_10M)) then
-			-- +---------------------------------------------+
-			-- | This IF block controls the various counters |
-			-- +---------------------------------------------+
+			-- ======================================================= 										===========================================
+			
+			-- +---------------------+
+			-- | Counter Controller  |
+			-- +---------------------+
+			--	This IF block controls the various counters
 			if reset_count /= 0 then 									-- in reset/end-of-frame period
 				-- during reset period, ensure other counters are reset
 				pixel_count := 0;
@@ -154,13 +156,7 @@ begin
 				-- load data from memory
 				pixel_buffer <= ram_read_data;
 	
-			-- =======================================================
-			-- [Person's Name] : [Date] :
-			-- ===========================
-			-- [  Brief explanaition of what was changed and why	   ]
-			-- [							. . .										]
-			-- [							. . .										]
-			-- ======================================================= 	
+
 			else -- not in reset period (i.e. currently sending data)
 				-- handle reaching end of a bit																		  ========================================
 				if enc_count = (ttot-1) then 								-- is end of this bit?
@@ -197,15 +193,21 @@ begin
 				ram_read_addr <= ram_read_addr + 1;									-- increment the RAM address as each pixel ends
 			end if;
 			
+			
+			-- ===========================
+			-- [  Brief explanaition of what was changed and why	   ]
+			-- [							. . .					   ]
+			-- [							. . .					   ]
+			-- =========================================================
 			-- +--------------------------------+
 			-- |	Contorls SDA (Serial Data)	|
 			-- +--------------------------------+
-			-- This IF block controls sda
-			if reset_count > 0 then
+			-- This IF block controls sda												-- [Jana] : [Date] :
+			if reset_count > 0 then														-- =========================================================
 				sda <= '0';															-- sda is 0 during reset/latch
 			elsif 
 				-- sda is 1 in the first part of a bit.
-				-- Length of first part depends on if bit is 1 or 0
+				-- Length of first p art depends on if bit is 1 or 0
 				( (pixel_buffer(23) = '1') and (enc_count < t1h) )
 				or
 				( (pixel_buffer(23) = '0') and (enc_count < t0h) )
@@ -293,3 +295,12 @@ begin
 	
 	
 end internals;
+
+	-- FORMATTING COMMENTS:
+	-- =========================================================
+	-- [Person's Name] : [Date] :
+	-- ===========================
+	-- [  Brief explanaition of what was changed and why	   ]
+	-- [							. . .					   ]
+	-- [							. . .					   ]
+	-- =========================================================
