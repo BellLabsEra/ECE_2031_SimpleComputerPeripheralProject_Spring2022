@@ -21,9 +21,10 @@ entity NeoPixelController is
 	port(
 		clk_10M   : in   std_logic;
 		resetn    : in   std_logic;																		-- Active low signal
-		io_write  : in   std_logic ;
-		cs_addr   : in   std_logic ;
-		cs_data   : in   std_logic ;
+		io_write  : in   std_logic;
+		cs_addr   : in   std_logic;
+		cs_data   : in   std_logic;
+		cs_mode   : in   std_logic; 																		-- mode controller signal
 		data_in   : in   std_logic_vector(15 downto 0);
 		sda       : out  std_logic
 	); 
@@ -37,16 +38,22 @@ end entity;
 architecture internals of NeoPixelController is
 	-- Architecture Declaration Section:
 	-- ================================
-	signal ram_read_addr, ram_write_addr : std_logic_vector(7 downto 0);							-- Signals for the RAM read (ram_read_addr) and write addresses (ram_write_addr)
-	signal ram_we : std_logic;																		-- ram_we:					RAM write enable ~ 
+	signal ram_read_addr, ram_write_addr : std_logic_vector(7 downto 0);						-- Signals for the RAM read (ram_read_addr) and write addresses (ram_write_addr)
+	signal ram_we : std_logic;																				-- ram_we:					RAM write enable ~ 
 	signal ram_read_data : std_logic_vector(23 downto 0);											-- ram_read_data:			Signals for data coming out of memory
 	signal pixel_buffer : std_logic_vector(23 downto 0);											-- pixel_buffer:			Signal to store the current output pixel's color data
 	signal ram_write_buffer : std_logic_vector(23 downto 0);										-- ram_write_buffer:		Signal SCOMP will write to before it gets stored into memory
 
 	-- RAM interface state machine signals:
 	-- ====================================
-	type write_states is (idle, storing);																-- 
+	type write_states is (idle, storing, copyall);																-- 
 	signal wstate: write_states;																			--
+	
+	-- Mode signals:
+	-- =============
+	type mode_states is (ind16, all16, ind24, holdpx);														--
+	signal mode: mode_states;																				--
+	
 	-- ==============================================================================
 	--									Pixel Data Storage in RAM 
 	--								============================
@@ -64,7 +71,7 @@ architecture internals of NeoPixelController is
 begin
 
 
-	pixelRAM : altsyncram										-- Create pixelRAM the memory using altsyncram
+	pixelRAM : altsyncram
 	GENERIC MAP (
 		address_reg_b => "CLOCK0",
 		clock_enable_input_a => "BYPASS",
@@ -110,20 +117,21 @@ begin
 	-- This process implements the NeoPixel protocol by using several counters to keep track of clock cycles,
 	-- which pixel is being written to, and which bit within that data is being written.
 	-- 
-	-- =======================================================================================
+	-- ==============================================================================
 
 	process (clk_10M, resetn)
 		-- protocol timing values (in 100s of ns)
 		constant t1h : integer := 8; 						-- high time for '1'  | 800ns
 		constant t0h : integer := 3; 						-- high time for '0'  | 300ns
-		constant ttot : integer := 12; 						-- total bit time     | 1200ns
+		constant ttot : integer := 12; 					    -- total bit time     | 1200ns
 		
 		constant npix : integer := 4;
 
-		variable bit_count   : integer range 0 to 31; 			-- bit_count:		which bit in the 24 bits is being sent
-		variable enc_count   : integer range 0 to 31;			-- enc_count():	counter to count through the bit encoding
-		variable reset_count : integer range 0 to 1000;			-- reset_count:	counter for the reset pulse
-		variable pixel_count : integer range 0 to 3;			-- pixel_count:	Counter for the current pixel
+		variable bit_count   : integer range 0 to 31; 		-- bit_count:		which bit in the 24 bits is being sent
+		variable enc_count   : integer range 0 to 31;		-- enc_count():	counter to count through the bit encoding
+		variable reset_count : integer range 0 to 1000;		-- reset_count:	counter for the reset pulse
+		variable pixel_count : integer range 0 to 255;			-- pixel_count:	Counter for the current pixel
+		
 		
 	begin
 		-- +-----------------------+
@@ -131,21 +139,19 @@ begin
 		-- +-----------------------+
 		if resetn = '0' then
 			-- reset all counters
-			bit_count := 23;						-- 
-			enc_count := 0;							--
-			reset_count := 1000;					-- 
-			sda <= '0';								-- set sda inactive
+			bit_count := 23;
+			enc_count := 0;
+			reset_count := 1000;
+			-- set sda inactive
+			sda <= '0';
 		-- +-----------------------+
-		-- | RESET Disabled Mode   |		~ resetn = '1'
+		-- |	RESET Disabled Mode	|
 		-- +-----------------------+
-		-- 
+		-- resetn = '1'
 		elsif (rising_edge(clk_10M)) then
-			-- ======================================================= 										===========================================
-			
-			-- +---------------------+
-			-- | Counter Controller  |
-			-- +---------------------+
-			--	This IF block controls the various counters
+			-- +---------------------------------------------+
+			-- | This IF block controls the various counters |
+			-- +---------------------------------------------+
 			if reset_count /= 0 then 									-- in reset/end-of-frame period
 				-- during reset period, ensure other counters are reset
 				pixel_count := 0;
@@ -156,7 +162,13 @@ begin
 				-- load data from memory
 				pixel_buffer <= ram_read_data;
 	
-
+			-- =======================================================
+			-- [Person's Name] : [Date] :
+			-- ===========================
+			-- [  Brief explanaition of what was changed and why	   ]
+			-- [							. . .										]
+			-- [							. . .										]
+			-- ======================================================= 	
 			else -- not in reset period (i.e. currently sending data)
 				-- handle reaching end of a bit																		  ========================================
 				if enc_count = (ttot-1) then 								-- is end of this bit?
@@ -182,32 +194,23 @@ begin
 				end if;
 			end if;																											
 			-- ======================================================= 										===========================================
-			-- +------------------------------------+
-			-- |	Controls the RAM read address 	|
-			-- +------------------------------------+
-			-- 
+			
 			-- This IF block controls the RAM read address to step through pixels
 			if reset_count /= 0 then
 				ram_read_addr <= x"00";
 			elsif (bit_count = 1) AND (enc_count = 0) then
-				ram_read_addr <= ram_read_addr + 1;									-- increment the RAM address as each pixel ends
+				-- increment the RAM address as each pixel ends
+				ram_read_addr <= ram_read_addr + 1;
 			end if;
 			
 			
-			-- ===========================
-			-- [  Brief explanaition of what was changed and why	   ]
-			-- [							. . .					   ]
-			-- [							. . .					   ]
-			-- =========================================================
-			-- +--------------------------------+
-			-- |	Contorls SDA (Serial Data)	|
-			-- +--------------------------------+
-			-- This IF block controls sda												-- [Jana] : [Date] :
-			if reset_count > 0 then														-- =========================================================
-				sda <= '0';															-- sda is 0 during reset/latch
+			-- This IF block controls sda
+			if reset_count > 0 then
+				-- sda is 0 during reset/latch
+				sda <= '0';
 			elsif 
 				-- sda is 1 in the first part of a bit.
-				-- Length of first p art depends on if bit is 1 or 0
+				-- Length of first part depends on if bit is 1 or 0
 				( (pixel_buffer(23) = '1') and (enc_count < t1h) )
 				or
 				( (pixel_buffer(23) = '0') and (enc_count < t0h) )
@@ -224,6 +227,9 @@ begin
 	-- ==============================================================================
 
 	process(clk_10M, resetn, cs_addr)
+
+	variable all16_counter	: integer range 0 to 1000;
+
 	begin
 		-- For this implementation, saving the memory address
 		-- doesn't require anything special.  Just latch it when
@@ -232,14 +238,35 @@ begin
 			ram_write_addr <= x"00";																	-- What does this mean?
 			
 		elsif rising_edge(clk_10M) then
-			if (io_write = '1') and (cs_addr='1') then											-- If SCOMP is writing to the address register...
-				ram_write_addr <= data_in(7 downto 0);												-- ram_write_addr: takes in data from SCOMP ????? (data has 8-bit resolution) ~ (8 Least Signficant Bits)
+
+			if (io_write = '1') and (cs_addr = '1') then											-- If SCOMP is writing to the address register...
+				ram_write_addr <= data_in(7 downto 0);										-- ram_write_addr: takes in data from SCOMP ????? (data has 8-bit resolution) ~ (8 Least Signficant Bits)
+			elsif (io_write = '1') and (cs_data = '1') then		-- auto increment feature when writing colors
+				ram_write_addr <= ram_write_addr + 1;			-- incremens the current write address after data is written in
+			elsif (io_write = '1') and (cs_mode = '1') then										-- Else if SCOMP is writing to the mode...
+				case data_in(3 downto 0) is																-- reads input (accepted range 0-15)
+				when "0000" =>																					-- mode 0 is ind16
+					mode <= ind16;
+				when "0001" =>																					-- mode 1 is all16
+					mode <= all16;
+				when "0010" =>																					-- mode 2 is ind24
+					mode <= ind24;
+				when "0011" =>																					-- mode 3 is holdpx
+					mode <= holdpx;
+				when others =>																					-- (default mode is ind16)
+					mode <= ind16;
+				end case;
+			elsif (wstate = copyall) then						
+				ram_write_addr <= ram_write_addr + 1;		   -- auto increment to fill all the register with the same color
 			end if;
+
 		end if;
 	
 		-- +------------------------------------------------------+
 		-- |	State Machine Protocol for Storing Data into Memory |
 		-- +------------------------------------------------------+
+		-- **CURRENTLY ONLY APPLIES TO ind16 MODE
+		
 		-- The sequnce of events needed to store data into memory will be implemented with a state machine.
 		
 		-- Although there are ways to more simply connect SCOMP's I/O system to an altsyncram module, 
@@ -261,33 +288,74 @@ begin
 		-- (3) others ~ 
 		if resetn = '0' then
 			wstate <= idle;
+			mode <= ind16;
+			all16_counter := 0;
 			ram_we <= '0';
 			ram_write_buffer <= x"000000";
 			-- Note that resetting this device does NOT clear the memory.
 			-- Clearing memory would require cycling through each address
 			-- and setting them all to 0.
 		elsif rising_edge(clk_10M) then
-			case wstate is
-				when idle =>
-					if (io_write = '1')  and (cs_data='1') then									-- [If SCOMP is writing to the address register...]
-						-- latch the current data into the temporary storage register,
-						-- because this is the only time it'll be available.
-						-- Convert RGB565 to 24-bit color
-						ram_write_buffer <= data_in(10 downto 5) & "00" & data_in(15 downto 11) & "000" & data_in(4 downto 0) & "000";
-						-- can raise ram_we on the upcoming transition, because data
-						-- won't be stored until next clock cycle.
+			case mode is
+			when ind16 =>
+				case wstate is
+					when idle =>
+						if (io_write = '1')  and (cs_data='1') then									-- [If SCOMP is writing to the address register...]
+							-- latch the current data into the temporary storage register,
+							-- because this is the only time it'll be available.
+							-- Convert RGB565 to 24-bit color
+							ram_write_buffer <= data_in(10 downto 5) & "00" & data_in(15 downto 11) & "000" & data_in(4 downto 0) & "000";
+							-- can raise ram_we on the upcoming transition, because data
+							-- won't be stored until next clock cycle.
+							ram_we <= '1';
+							-- Change state
+							wstate <= storing;
+						end if;
+					when storing =>
+						-- All that's needed here is to lower ram_we.  The RAM will be
+						-- storing data on this clock edge, so ram_we can go low at the
+						-- same time.
+						ram_we <= '0';
+						wstate <= idle;
+					when others =>
+						wstate <= idle;
+				end case;
+			
+			when all16 =>
+				-- implementation to set all pixels to the same color
+				case wstate is 
+					when idle =>
+				
+						if (io_write = '1') and (cs_data = '1') then
+							ram_write_buffer <= data_in(10 downto 5) & "00" & data_in(15 downto 11) & "000" & data_in(4 downto 0) & "000";
+							ram_we <= '1';
+							all16_counter := 0;
+							wstate <= copyall;
+						end if;
+
+					when copyall =>
+
+						ram_write_buffer <= ram_write_buffer;
 						ram_we <= '1';
-						-- Change state
-						wstate <= storing;
-					end if;
-				when storing =>
-					-- All that's needed here is to lower ram_we.  The RAM will be
-					-- storing data on this clock edge, so ram_we can go low at the
-					-- same time.
-					ram_we <= '0';
-					wstate <= idle;
-				when others =>
-					wstate <= idle;
+
+						if (all16_counter = 1000) then
+							wstate <= idle;
+						else
+							wstate <= copyall;
+							all16_counter := all16_counter + 1;
+						end if;
+
+					when others =>
+						wstate <= idle;
+				end case;
+
+			when holdpx =>
+				-- implementation to hold pixel data until a command is given to change them all at once
+				
+			when ind24 =>
+				-- implementation to set individual pixel to a 24-bit color
+			when others =>
+				mode <= ind16;
 			end case;
 		end if;
 	end process;
@@ -295,12 +363,3 @@ begin
 	
 	
 end internals;
-
-	-- FORMATTING COMMENTS:
-	-- =========================================================
-	-- [Person's Name] : [Date] :
-	-- ===========================
-	-- [  Brief explanaition of what was changed and why	   ]
-	-- [							. . .					   ]
-	-- [							. . .					   ]
-	-- =========================================================
