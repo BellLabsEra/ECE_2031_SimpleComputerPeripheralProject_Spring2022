@@ -82,8 +82,8 @@ begin
 		init_file => "pixeldata.mif",
 		intended_device_family => "Cyclone V",
 		lpm_type => "altsyncram",
-		numwords_a => 4,
-		numwords_b => 4,
+		numwords_a => 256,
+		numwords_b => 256,
 		operation_mode => "BIDIR_DUAL_PORT",
 		outdata_aclr_a => "NONE",
 		outdata_aclr_b => "NONE",
@@ -125,12 +125,12 @@ begin
 		constant t0h : integer := 3; 						-- high time for '0'  | 300ns
 		constant ttot : integer := 12; 					    -- total bit time     | 1200ns
 		
-		constant npix : integer := 4;
+		constant npix : integer := 256;
 
 		variable bit_count   : integer range 0 to 31; 		-- bit_count:		which bit in the 24 bits is being sent
 		variable enc_count   : integer range 0 to 31;		-- enc_count():	counter to count through the bit encoding
 		variable reset_count : integer range 0 to 1000;		-- reset_count:	counter for the reset pulse
-		variable pixel_count : integer range 0 to 255;			-- pixel_count:	Counter for the current pixel
+		variable pixel_count : integer range 0 to 255;		-- pixel_count:	Counter for the current pixel
 		
 		
 	begin
