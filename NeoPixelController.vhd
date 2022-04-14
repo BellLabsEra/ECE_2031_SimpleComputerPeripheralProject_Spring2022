@@ -1,6 +1,7 @@
 -- ====================================================
 -- WS2812 communication interface starting point for
 -- ECE 2031 final project spring 2022.
+-- Updated version of modes
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -19,14 +20,16 @@ use altera_mf.altera_mf_components.all;
 entity NeoPixelController is
 
 	port(
-		clk_10M   : in   std_logic;
-		resetn    : in   std_logic;																		-- Active low signal
-		io_write  : in   std_logic;
-		cs_addr   : in   std_logic;
-		cs_data   : in   std_logic;
-		cs_mode   : in   std_logic; 																		-- mode controller signal
-		data_in   : in   std_logic_vector(15 downto 0);
-		sda       : out  std_logic
+		clk_10M   	: in   std_logic;
+		resetn    	: in   std_logic;																		-- Active low signal
+		io_write  	: in   std_logic;
+		cs_addr   	: in   std_logic;
+		cs_data   	: in   std_logic;
+		cs_mode   	: in   std_logic; 
+      cs_refresh  : in   std_logic;
+      cs_all    	: in   std_logic;																		-- mode controller signal
+		data_in   	: in   std_logic_vector(15 downto 0);
+		sda       	: out  std_logic
 	); 
 
 end entity;
@@ -43,6 +46,7 @@ architecture internals of NeoPixelController is
 	signal ram_read_data : std_logic_vector(23 downto 0);											-- ram_read_data:			Signals for data coming out of memory
 	signal pixel_buffer : std_logic_vector(23 downto 0);											-- pixel_buffer:			Signal to store the current output pixel's color data
 	signal ram_write_buffer : std_logic_vector(23 downto 0);										-- ram_write_buffer:		Signal SCOMP will write to before it gets stored into memory
+	signal bit_24_buffer : std_logic_vector(23 downto 0);
 
 	-- RAM interface state machine signals:
 	-- ====================================
@@ -51,8 +55,12 @@ architecture internals of NeoPixelController is
 	
 	-- Mode signals:
 	-- =============
-	type mode_states is (ind16, all16, ind24, holdpx);														--
-	signal mode: mode_states;																				--
+	type mode_states is (default, ind24);       													--
+	signal mode: mode_states;					
+    
+    -- Refresh States:
+    type refresh_states is (default, hold);
+    signal refresh: refresh_states;
 	
 	-- ==============================================================================
 	--									Pixel Data Storage in RAM 
@@ -157,11 +165,15 @@ begin
 				pixel_count := 0;
 				bit_count := 23;
 				enc_count := 0;
-				-- decrement the reset count
-				reset_count := reset_count - 1;
+				-- decrements the reset count if not on hold refresh state
+                if (refresh = hold) then
+                    reset_count := reset_count;
+                else
+                    reset_count := reset_count - 1;
+                end if;
 				-- load data from memory
 				pixel_buffer <= ram_read_data;
-	
+
 			-- =======================================================
 			-- [Person's Name] : [Date] :
 			-- ===========================
@@ -228,7 +240,8 @@ begin
 
 	process(clk_10M, resetn, cs_addr)
 
-	variable all16_counter	: integer range 0 to 1000;
+	variable all16_counter	: integer range 0 to 255;
+	variable bit_24_counter : integer range 0 to 3;
 
 	begin
 		-- For this implementation, saving the memory address
@@ -241,27 +254,38 @@ begin
 
 			if (io_write = '1') and (cs_addr = '1') then											-- If SCOMP is writing to the address register...
 				ram_write_addr <= data_in(7 downto 0);										-- ram_write_addr: takes in data from SCOMP ????? (data has 8-bit resolution) ~ (8 Least Signficant Bits)
-			elsif (io_write = '1') and (cs_data = '1') then		-- auto increment feature when writing colors
+			elsif (wstate = storing) then							-- auto increment feature when writing colors
 				ram_write_addr <= ram_write_addr + 1;			-- incremens the current write address after data is written in
-			elsif (io_write = '1') and (cs_mode = '1') then										-- Else if SCOMP is writing to the mode...
-				case data_in(3 downto 0) is																-- reads input (accepted range 0-15)
-				when "0000" =>																					-- mode 0 is ind16
-					mode <= ind16;
-				when "0001" =>																					-- mode 1 is all16
-					mode <= all16;
-				when "0010" =>																					-- mode 2 is ind24
-					mode <= ind24;
-				when "0011" =>																					-- mode 3 is holdpx
-					mode <= holdpx;
-				when others =>																					-- (default mode is ind16)
-					mode <= ind16;
-				end case;
 			elsif (wstate = copyall) then						
 				ram_write_addr <= ram_write_addr + 1;		   -- auto increment to fill all the register with the same color
 			end if;
 
 		end if;
-	
+
+        if resetn = '0' then
+            mode <= default;
+            refresh <= default;
+        elsif rising_edge(clk_10M) then
+            if (io_write = '1') and (cs_mode = '1') then										-- Else if SCOMP is writing to the mode...
+				case data_in(3 downto 0) is																-- reads input (accepted range 0-15)
+				when "0000" =>																					-- mode 0 is ind16
+					mode <= default;
+				when "0001" =>																					-- mode 2 is ind24
+					mode <= ind24;
+				when others =>																					-- (default mode is ind16)
+					mode <= default;
+				end case;
+            elsif (io_write = '1') and (cs_refresh = '1') then
+                case data_in(3 downto 0) is                     -- sets the refresh level
+                    when "0000" =>
+                        refresh <= default;
+                    when "0001" =>
+                        refresh <= hold;
+                    when others =>
+                        refresh <= default;
+                end case;
+            end if;
+        end if;
 		-- +------------------------------------------------------+
 		-- |	State Machine Protocol for Storing Data into Memory |
 		-- +------------------------------------------------------+
@@ -288,8 +312,8 @@ begin
 		-- (3) others ~ 
 		if resetn = '0' then
 			wstate <= idle;
-			mode <= ind16;
 			all16_counter := 0;
+			bit_24_counter := 0;
 			ram_we <= '0';
 			ram_write_buffer <= x"000000";
 			-- Note that resetting this device does NOT clear the memory.
@@ -297,10 +321,11 @@ begin
 			-- and setting them all to 0.
 		elsif rising_edge(clk_10M) then
 			case mode is
-			when ind16 =>
+			when default =>
 				case wstate is
 					when idle =>
-						if (io_write = '1')  and (cs_data='1') then									-- [If SCOMP is writing to the address register...]
+                    -- waiting for user input
+						if (io_write = '1')  and (cs_data = '1') then								-- if SCOMP is writing to the ram using OUT PXL_D 
 							-- latch the current data into the temporary storage register,
 							-- because this is the only time it'll be available.
 							-- Convert RGB565 to 24-bit color
@@ -310,7 +335,28 @@ begin
 							ram_we <= '1';
 							-- Change state
 							wstate <= storing;
+                        elsif (io_write = '1') and (cs_all = '1') then                              -- if SCOMP is writing to the ram using OUT PXL_ALL
+                            -- If the user wants to set all the pixels simultaneously
+                            ram_write_buffer <= data_in(10 downto 5) & "00" & data_in(15 downto 11) & "000" & data_in(4 downto 0) & "000";
+							ram_we <= '1';
+							all16_counter := 0; -- reset the counter
+                            -- goes into the copy all state 
+							wstate <= copyall;
+
 						end if;
+                        
+                    when copyall =>
+                        -- copy all will copy the inputted value from SCOMP to all the available memory addresses
+						ram_write_buffer <= ram_write_buffer;
+						ram_we <= '1';
+
+						if (all16_counter = 255) then
+							wstate <= storing;
+						else
+							wstate <= copyall;
+							all16_counter := all16_counter + 1;
+						end if;
+
 					when storing =>
 						-- All that's needed here is to lower ram_we.  The RAM will be
 						-- storing data on this clock edge, so ram_we can go low at the
@@ -321,41 +367,46 @@ begin
 						wstate <= idle;
 				end case;
 			
-			when all16 =>
-				-- implementation to set all pixels to the same color
-				case wstate is 
-					when idle =>
-				
-						if (io_write = '1') and (cs_data = '1') then
-							ram_write_buffer <= data_in(10 downto 5) & "00" & data_in(15 downto 11) & "000" & data_in(4 downto 0) & "000";
-							ram_we <= '1';
-							all16_counter := 0;
-							wstate <= copyall;
-						end if;
-
-					when copyall =>
-
-						ram_write_buffer <= ram_write_buffer;
-						ram_we <= '1';
-
-						if (all16_counter = 1000) then
-							wstate <= idle;
-						else
-							wstate <= copyall;
-							all16_counter := all16_counter + 1;
-						end if;
-
-					when others =>
-						wstate <= idle;
-				end case;
-
-			when holdpx =>
-				-- implementation to hold pixel data until a command is given to change them all at once
-				
 			when ind24 =>
 				-- implementation to set individual pixel to a 24-bit color
+				-- ==================
+				case wstate is
+					when idle =>
+
+						if (io_write = '1') and (cs_data = '1') then 
+							if (bit_24_counter = 0) then
+								bit_24_buffer(15 downto 8) <= data_in(7 downto 0);  -- latches our buffer signal to data_in and reads the red value of our 24 bit rgb color signal
+								bit_24_counter := bit_24_counter + 1;
+							elsif (bit_24_counter = 1) then
+								bit_24_buffer(23 downto 16) <= data_in(7 downto 0); -- latches the signal and reads the green value
+								bit_24_counter := bit_24_counter + 1;
+							elsif (bit_24_counter = 2) then
+								bit_24_buffer(7 downto 0) <= data_in(7 downto 0); -- latches the signal and reads the blue value
+								bit_24_counter := bit_24_counter + 1;
+							elsif (bit_24_counter = 3) then
+								bit_24_counter := 0;
+								ram_write_buffer <= bit_24_buffer;
+							else
+								bit_24_counter := 0;
+							end if;
+							
+							ram_we <= '1';
+							wstate <= storing;
+						end if;
+
+					when storing =>
+						ram_we <= '0';
+						wstate <= idle;
+					
+					when others =>
+						wstate <= idle;
+						
+					end case;
+					
+					
+				-- ==================
 			when others =>
-				mode <= ind16;
+				mode <= default;
 			end case;
 		end if;
 	end process;
