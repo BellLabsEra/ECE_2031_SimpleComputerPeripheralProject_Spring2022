@@ -14,13 +14,13 @@ Main:
 	AND		ValidPx
 	
 	JZERO	Default
-	SHIFT	1
+	SHIFT	-1
 	JZERO	HoldSetup
-	SHIFT	1
-	JZERO	AutoInc24
-	SHIFT	1
+	SHIFT	-1
+	JZERO	AutoInc24Setup
+	SHIFT	-1
 	JZERO	BrightCompare
-	SHIFT	1
+	SHIFT	-1
 	JZERO	AutoIncSetup
 
 	JUMP	Main
@@ -55,19 +55,13 @@ Default:
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	40
-	OUT		PXL_A
-	LOAD	Red
-	OUT		PXL_D
-	CALL	QuickDelay
-	
 	LOADI	41
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	43
+	LOADI	42
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
@@ -80,6 +74,12 @@ Default:
 	CALL	QuickDelay
 	
 	LOADI	45
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	46
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
@@ -209,7 +209,13 @@ Default:
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
-	CALL	QuickDelay
+	
+	CALL	Delay
+	CALL	Delay
+	CALL	Delay
+	CALL	Delay
+	CALL	Delay
+	CALL	Delay
 	
 	IN		Switches
 	AND		ValidPx
@@ -223,32 +229,36 @@ HoldSetup:
 	OUT		PXL_M
 Hold:
 	IN		Switches
-	SHIFT	9
+	SHIFT	-9
 	OUT		PXL_R
 	
+	CALL	Delay
 	LOAD	Red
 	OUT		PXL_ALL
-	CALL	QuickDelay
+	CALL	Delay
 	
 	IN		Switches
-	SHIFT	9
+	SHIFT	-9
 	OUT		PXL_R
 	
+	CALL	Delay
 	LOAD	Blue
 	OUT		PXL_ALL
-	CALL	QuickDelay
+	CALL	Delay
 	
 	IN		Switches
-	SHIFT	9
+	SHIFT	-9
 	OUT		PXL_R
 	
+	CALL	Delay
 	LOAD	Green
 	OUT		PXL_ALL
-	CALL	QuickDelay
+	CALL	Delay
 	
 	IN		Switches
 	AND		ValidPx
-	SHIFT	1
+	JZERO	Main
+	SHIFT	-1
 	JZERO	Hold				; loop again if switches NOT changed
 	JUMP 	Main				; jump back to main if switches changed
 
@@ -314,7 +324,10 @@ AutoInc24:
 	; (DONE)
 	IN		Switches
 	AND		ValidPx
-	SHIFT	2
+	JZERO	Main
+	SHIFT	-1
+	JZERO	Main
+	SHIFT	-1
 	JZERO	AutoInc24			; loop again if switches NOT changed
 	JUMP 	Main				; jump back to main if switches changed
 
@@ -324,16 +337,21 @@ BrightCompare:
 	LOADI	0
 	OUT		PXL_R
 	OUT		PXL_A
+	OUT		PXL_M
 	
 	; max 16 bit
 	LOAD	MaxRed
 	OUT		PXL_D
+	CALL	QuickDelay
 	LOAD	MaxGreen
 	OUT		PXL_D
+	CALL	QuickDelay
 	LOAD	MaxBlue
 	OUT		PXL_D
+	CALL	QuickDelay
 	LOAD	MaxWhite
 	OUT		PXL_D
+	CALL	QuickDelay
 	
 	; max 24 bit
 	LOADI	1
@@ -344,6 +362,7 @@ BrightCompare:
 	LOADI	0
 	OUT		PXL_D
 	OUT		PXL_D
+	CALL	QuickDelay
 	; (max green)
 	LOADI	0
 	OUT		PXL_D
@@ -351,21 +370,29 @@ BrightCompare:
 	OUT		PXL_D
 	LOADI	0
 	OUT		PXL_D
+	CALL	QuickDelay
 	; (max blue)
 	LOADI	0
 	OUT		PXL_D
 	OUT		PXL_D
 	LOAD	MaxByte
 	OUT		PXL_D
+	CALL	QuickDelay
 	; (max white)
 	LOAD	MaxByte
 	OUT		PXL_D
 	OUT		PXL_D
 	OUT		PXL_D
+	CALL	QuickDelay
 
 	IN		Switches
 	AND		ValidPx
-	SHIFT	3
+	JZERO	Main
+	SHIFT	-1
+	JZERO	Main
+	SHIFT	-1
+	JZERO	Main
+	SHIFT	-1
 	JZERO	BrightCompare		; loop again if switches NOT changed
 	JUMP 	Main				; jump back to main if switches changed
 
@@ -389,7 +416,15 @@ AutoInc:
 	CALL	QuickDelay				; display green
 	
 	IN		Switches
-	SHIFT	4
+	AND		ValidPx
+	JZERO	Main
+	SHIFT	-1
+	JZERO	Main
+	SHIFT	-1
+	JZERO	Main
+	SHIFT	-1
+	JZERO	Main
+	SHIFT	-1
 	JZERO	AutoInc
 	JUMP 	Main					; jump back to main if switches changed
 
@@ -414,6 +449,15 @@ QuickWaitingLoop:
 	JNEG   QuickWaitingLoop
 	RETURN
 
+; To make things happen on a human timescale, the timer is
+; used to delay 8/10 of a second.
+LongDelay:
+	OUT    Timer
+LongWaitingLoop:
+	IN     Timer
+	ADDI   -8
+	JNEG   LongWaitingLoop
+	RETURN
 
 ; Some variables
 
