@@ -7,7 +7,10 @@ ORG 0
 
 Main:
 	LOADI	0
-	OUT		PXL_ALL
+	OUT		PXL_M
+	OUT		SLEEP
+	CALL	Delay
+	CALL	Delay
 	CALL	Delay
 	
 	IN		Switches
@@ -37,6 +40,12 @@ Default:
 	OUT		PXL_ALL
 	CALL	Delay
 	
+	LOADI	35
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
 	LOADI	36
 	OUT		PXL_A
 	LOAD	Red
@@ -49,7 +58,13 @@ Default:
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	38
+	LOADI	39
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	40
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
@@ -61,7 +76,7 @@ Default:
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	42
+	LOADI	43
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
@@ -79,25 +94,127 @@ Default:
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	46
+	LOADI	47
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	83
+	LOADI	48
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	87
+	LOADI	49
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	91
+	LOADI	51
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	52
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	53
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	55
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	56
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	57
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	59
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	60
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	61
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	67
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	70
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	74
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	76
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	80
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	84
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	88
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	92
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	99
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
@@ -109,19 +226,13 @@ Default:
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	101
+	LOADI	103
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	102
-	OUT		PXL_A
-	LOAD	Red
-	OUT		PXL_D
-	CALL	QuickDelay
-	
-	LOADI	104
+	LOADI	107
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
@@ -133,31 +244,109 @@ Default:
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	109
+	LOADI	111
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	110
+	LOADI	112
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	147
+	LOADI	113
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	151
+	LOADI	115
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	155
+	LOADI	117
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	119
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	120
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	121
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	124
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	131
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	134
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	138
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	140
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	142
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	148
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	152
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	156
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	163
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
@@ -175,7 +364,13 @@ Default:
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	166
+	LOADI	167
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	168
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
@@ -187,7 +382,7 @@ Default:
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	170
+	LOADI	171
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
@@ -205,7 +400,67 @@ Default:
 	OUT		PXL_D
 	CALL	QuickDelay
 	
-	LOADI	174
+	LOADI	175
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	176
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	177
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	179
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	180
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	181
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	183
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	184
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	185
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	187
+	OUT		PXL_A
+	LOAD	Red
+	OUT		PXL_D
+	CALL	QuickDelay
+	
+	LOADI	188
 	OUT		PXL_A
 	LOAD	Red
 	OUT		PXL_D
@@ -483,3 +738,4 @@ PXL_D:    	EQU &H0B1	; Pixel Data
 PXL_M:		EQU &H0B2	; Pixel Mode		(
 PXL_R:		EQU &H0B3	; Pixel Refresh		(Changes refresh mode)
 PXL_ALL:	EQU &H0B4	; Pixel All			(sets all pixels to OUT color)
+SLEEP:		EQU	&H0B5	; Sleep dimming effect
